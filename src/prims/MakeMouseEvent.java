@@ -24,7 +24,6 @@ import org.nlogo.window.View;
 
 public class MakeMouseEvent extends DefaultCommand implements MouseListener {
 
-	
 	String toExecute;
 	String eventType = "MouseDown";
 	
@@ -47,7 +46,7 @@ public class MakeMouseEvent extends DefaultCommand implements MouseListener {
 	public void perform(Argument[] args, Context ctxt)
 			throws ExtensionException, LogoException {
 
-		String etype = args[0].getString(); //eventually put this in eventType;
+		String etype = args[0].getString(); //eventually put this in eventType; for now, all is MouseDown
 		toExecute = args[1].getString();
 		
 		org.nlogo.nvm.ExtensionContext context = (org.nlogo.nvm.ExtensionContext)ctxt;
@@ -57,7 +56,8 @@ public class MakeMouseEvent extends DefaultCommand implements MouseListener {
 		myView = ws.view;
 		myView.addMouseListener(this);
 		
-		
+		//if we're in the App case, we can grab a class that can run our commandLater directly
+		//if not, we can assume we're in an embedding API context, so walk up to find the InterfaceComponent
 		try {
 			theApp = App.app();
 		} catch (Exception e) {
@@ -72,7 +72,6 @@ public class MakeMouseEvent extends DefaultCommand implements MouseListener {
 	
 	
 	public InterfaceComponent findInterfaceComponent( JComponent p ) {
-		
 		while (! (p instanceof InterfaceComponent) )
 		{
 			p = (JComponent)p.getParent();
@@ -82,9 +81,11 @@ public class MakeMouseEvent extends DefaultCommand implements MouseListener {
 	}
 
 
+	//idea here is to have the netlogo program re-apply the listener at the end of the callback 
+	//this will avoid having (many) cases where there is a pile-up of listeners, without restricting this
+	//if it's actually desired.  watch initial uses to see what the best approach longer term is.
 	@Override
 	public void mousePressed(MouseEvent arg0) {
-		// TODO Auto-generated method stub
 		if (isApp) {
 			try {
 				theApp.commandLater(toExecute);
