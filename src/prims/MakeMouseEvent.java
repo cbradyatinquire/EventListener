@@ -1,16 +1,11 @@
 package prims;
 
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
 
 import javax.swing.JComponent;
-import javax.swing.JPanel;
+
+import listeners.MouseEventListener;
 
 import org.nlogo.api.Argument;
-import org.nlogo.api.CompilerException;
 import org.nlogo.api.Context;
 import org.nlogo.api.DefaultCommand;
 import org.nlogo.api.ExtensionException;
@@ -21,20 +16,12 @@ import org.nlogo.lite.InterfaceComponent;
 import org.nlogo.window.GUIWorkspace;
 import org.nlogo.window.View;
 
+import events.EventsExtension;
 
-public class MakeMouseEvent extends DefaultCommand implements MouseListener {
 
-	String toExecute;
-	String eventType = "MouseDown";
-	
-	Context runContext;
-	InterfaceComponent myInterface;
-	String header, inner, footer;
-	
-	boolean isApp = true;
-	App theApp;
-	InterfaceComponent interfaceComponent;
-	View myView;
+public class MakeMouseEvent extends DefaultCommand  {
+
+	String eventType = "MouseDown";	
 	
 	@Override
     public Syntax getSyntax() {
@@ -46,28 +33,36 @@ public class MakeMouseEvent extends DefaultCommand implements MouseListener {
 	public void perform(Argument[] args, Context ctxt)
 			throws ExtensionException, LogoException {
 
-		String etype = args[0].getString(); //eventually put this in eventType; for now, all is MouseDown
-		toExecute = args[1].getString();
+		//String etype = args[0].getString(); //eventually use this to choose which type of listener to spawn.
+		//for now, we only have MouseEvents (and only mousedown, actually).
 		
+		//set up basics.
+		String commands = args[1].getString();
+		
+		//now we need to get the view that we will ask the listener to subscribe to events from
 		org.nlogo.nvm.ExtensionContext context = (org.nlogo.nvm.ExtensionContext)ctxt;
-		runContext = context;
-		
 		GUIWorkspace ws = (GUIWorkspace)(context.workspace());
-		myView = ws.view;
-		myView.addMouseListener(this);
+		View view = ws.view;
 		
+		//finally, we need the object we'll call into
 		//if we're in the App case, we can grab a class that can run our commandLater directly
 		//if not, we can assume we're in an embedding API context, so walk up to find the InterfaceComponent
+		boolean isapp = true;
+		App theapp = null;
+		InterfaceComponent interfacecomponent = null;
+
 		try {
-			theApp = App.app();
+			theapp = App.app();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		if (theApp == null) {
-			isApp = false;
-			interfaceComponent = findInterfaceComponent((JComponent)ws.getWidgetContainer());
+		if (theapp == null) {
+			isapp = false;
+			interfacecomponent = findInterfaceComponent((JComponent)ws.getWidgetContainer());
 		}
 
+		MouseEventListener newListener = new MouseEventListener( isapp, theapp, interfacecomponent, view, commands);
+		EventsExtension.registerMouseListener(newListener);
 	}
 	
 	
@@ -81,48 +76,4 @@ public class MakeMouseEvent extends DefaultCommand implements MouseListener {
 	}
 
 
-	//idea here is to have the netlogo program re-apply the listener at the end of the callback 
-	//this will avoid having (many) cases where there is a pile-up of listeners, without restricting this
-	//if it's actually desired.  watch initial uses to see what the best approach longer term is.
-	@Override
-	public void mousePressed(MouseEvent arg0) {
-		if (isApp) {
-			try {
-				theApp.commandLater(toExecute);
-			} catch (CompilerException e) {
-				e.printStackTrace();
-			}
-		} else {
-			try {
-				interfaceComponent.commandLater(toExecute);
-			} catch (CompilerException e) {
-				e.printStackTrace();
-			}
-		}
-		myView.removeMouseListener(this);
-	}
-
-	@Override
-	public void mouseReleased(MouseEvent arg0) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void mouseClicked(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void mouseEntered(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void mouseExited(MouseEvent e) {
-		// TODO Auto-generated method stub
-		
-	}
 }
